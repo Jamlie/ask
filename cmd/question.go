@@ -46,7 +46,7 @@ var geminiCmd = &cobra.Command{
 		}
 
 		if len(args) != 1 {
-			fmt.Fprintln(os.Stderr, "gemini only receives one argument")
+			fmt.Fprintln(os.Stderr, logger.Error.String("gemini only receives one argument"))
 			os.Exit(0)
 		}
 
@@ -58,7 +58,6 @@ func init() {
 	rootCmd.AddCommand(geminiCmd)
 
 	geminiCmd.PersistentFlags().BoolP("no-csv", "n", false, "Use to stop saving questions in a csv file")
-	geminiCmd.PersistentFlags().BoolP("glow", "g", false, "Convert output to actual markdown for the terminal")
 	geminiCmd.PersistentFlags().BoolP("chat", "c", false, "Used to start a chat with Gemini")
 }
 
