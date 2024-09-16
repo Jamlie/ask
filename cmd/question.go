@@ -91,7 +91,7 @@ func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, question string) {
 		fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
 		return
 	}
-	fmt.Println(string(mdAnswer))
+	fmt.Print(string(mdAnswer))
 }
 
 func startChat(geminiAI *gemini.Gemini) {
@@ -151,7 +151,7 @@ func startChat(geminiAI *gemini.Gemini) {
 			fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
 			os.Exit(0)
 		}
-		fmt.Println(string(mdAnswer))
+		fmt.Print(string(mdAnswer))
 	}
 }
 
