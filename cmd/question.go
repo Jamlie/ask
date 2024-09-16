@@ -91,6 +91,8 @@ func startChat(geminiAI *gemini.Gemini) {
 
 	interrupted := 0
 
+	ctx := context.Background()
+
 	for {
 		input, err := rl.Readline()
 		if errors.Is(err, readline.ErrInterrupt) {
@@ -115,7 +117,7 @@ func startChat(geminiAI *gemini.Gemini) {
 			continue
 		}
 
-		res, err := chatBot(context.Background(), input)
+		res, err := chatBot(ctx, input)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -130,7 +132,8 @@ func initViper(homeDir string) {
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(homeDir)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal(err)
+		fmt.Println(logger.Error.String("Cannot read .ask.toml"))
+		os.Exit(0)
 	}
 }
 
