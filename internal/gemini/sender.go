@@ -1,69 +1,81 @@
 package gemini
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
+	"log"
+
+	"github.com/google/generative-ai-go/genai"
+	"google.golang.org/api/option"
 )
 
-func Question(apiKey string) func(context.Context, string) (*Response, error) {
-	return func(ctx context.Context, s string) (*Response, error) {
-		reqBody := Request{
-			Contents: []contentRequest{
-				{
-					Parts: []partRequest{
-						{
-							Text: s,
-						},
-					},
-				},
-			},
-		}
+type Gemini struct {
+	client *genai.Client
+	model  *genai.GenerativeModel
+}
 
-		jsonData, err := json.Marshal(reqBody)
+func New(apiKey string) *Gemini {
+	client, err := genai.NewClient(context.Background(), option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	model := client.GenerativeModel("gemini-1.5-flash")
+	model.SafetySettings = []*genai.SafetySetting{
+		{
+			Category:  genai.HarmCategoryHarassment,
+			Threshold: genai.HarmBlockNone,
+		},
+		{
+			Category:  genai.HarmCategoryHateSpeech,
+			Threshold: genai.HarmBlockNone,
+		},
+		{
+			Category:  genai.HarmCategorySexuallyExplicit,
+			Threshold: genai.HarmBlockNone,
+		},
+		{
+			Category:  genai.HarmCategoryDangerousContent,
+			Threshold: genai.HarmBlockNone,
+		},
+	}
+
+	return &Gemini{
+		client: client,
+		model:  model,
+	}
+}
+
+func (g *Gemini) Close() error {
+	return g.client.Close()
+}
+
+func (g *Gemini) Question(
+	ctx context.Context,
+	question string,
+) (*genai.GenerateContentResponse, error) {
+	resp, err := g.model.GenerateContent(ctx, genai.Text(question))
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (g *Gemini) Chat() func(context.Context, string) (*genai.GenerateContentResponse, error) {
+	chat := g.model.StartChat()
+
+	return func(ctx context.Context, input string) (*genai.GenerateContentResponse, error) {
+		res, err := chat.SendMessage(ctx, genai.Text(input))
 		if err != nil {
 			return nil, err
 		}
-
-		req, err := http.NewRequestWithContext(
-			ctx,
-			http.MethodPost,
-			fmt.Sprintf(
-				"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=%s",
-				apiKey,
-			),
-			bytes.NewBuffer(jsonData),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-
-		client := new(http.Client)
-		res, err := client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to send request: %w", err)
-		}
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(res.Body)
-			return nil, fmt.Errorf(
-				"request failed with status %d: %s",
-				res.StatusCode,
-				string(bodyBytes),
-			)
-		}
-
-		var response Response
-		if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-		}
-
-		return &response, nil
+		chat.History = append(chat.History, &genai.Content{
+			Parts: []genai.Part{
+				genai.Text(input),
+			},
+			Role: "user",
+		})
+		chat.History = append(chat.History, res.Candidates[0].Content)
+		return res, nil
 	}
 }
