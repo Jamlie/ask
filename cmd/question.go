@@ -9,11 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/Jamlie/ask/internal/gemini"
 	"github.com/Jamlie/ask/internal/logger"
+	"github.com/charmbracelet/glamour"
 	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,7 +28,8 @@ var geminiCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(0)
 		}
 
 		initViper(homeDir)
@@ -45,7 +46,8 @@ var geminiCmd = &cobra.Command{
 		}
 
 		if len(args) != 1 {
-			fmt.Println("gemini only receives one argument")
+			fmt.Fprintln(os.Stderr, "gemini only receives one argument")
+			os.Exit(0)
 		}
 
 		askQuestion(cmd, geminiAI, args[0])
@@ -56,17 +58,19 @@ func init() {
 	rootCmd.AddCommand(geminiCmd)
 
 	geminiCmd.PersistentFlags().BoolP("no-csv", "n", false, "Use to stop saving questions in a csv file")
+	geminiCmd.PersistentFlags().BoolP("glow", "g", false, "Convert output to actual markdown for the terminal")
 	geminiCmd.PersistentFlags().BoolP("chat", "c", false, "Used to start a chat with Gemini")
 }
 
 func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, question string) {
 	if len(question) == 0 {
-		fmt.Println(logger.Warn.String("Entered an empty input"))
+		fmt.Fprintln(os.Stderr, logger.Warn.String("Entered an empty input"))
 		return
 	}
 	res, err := geminiAI.Question(context.Background(), question)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
+		return
 	}
 
 	answer := fmt.Sprint(res.Candidates[0].Content.Parts[0])
@@ -74,24 +78,39 @@ func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, question string) {
 	unsave, _ := cmd.PersistentFlags().GetBool("no-csv")
 	if !unsave {
 		if err := saveToCSV([]string{question, answer}); err != nil {
-			log.Println("Unable to save record into CSV")
+			fmt.Fprintln(os.Stderr, logger.Error.String("Unable to save record into CSV"))
 		}
 	}
 
-	fmt.Println(answer)
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(80),
+	)
+
+	mdAnswer, err := r.Render(answer)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
+		return
+	}
+	fmt.Println(string(mdAnswer))
 }
 
 func startChat(geminiAI *gemini.Gemini) {
 	chatBot := geminiAI.Chat()
 	rl, err := readline.New("> ")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
 	}
 	defer rl.Close()
 
 	interrupted := 0
 
 	ctx := context.Background()
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(80),
+	)
 
 	for {
 		input, err := rl.Readline()
@@ -107,23 +126,33 @@ func startChat(geminiAI *gemini.Gemini) {
 			return
 		}
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
+			os.Exit(0)
 		}
 
-		interrupted--
+		if interrupted != 0 {
+			interrupted--
+		}
 
 		if len(input) == 0 {
-			fmt.Println(logger.Warn.String("Entered an empty input"))
+			fmt.Fprintln(os.Stderr, logger.Warn.String("Entered an empty input"))
 			continue
 		}
 
 		res, err := chatBot(ctx, input)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
+			os.Exit(0)
 		}
 
 		answer := fmt.Sprint(res.Candidates[0].Content.Parts[0])
-		fmt.Print(answer)
+
+		mdAnswer, err := r.Render(answer)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, logger.Error.String(err.Error()))
+			os.Exit(0)
+		}
+		fmt.Println(string(mdAnswer))
 	}
 }
 
@@ -132,7 +161,7 @@ func initViper(homeDir string) {
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(homeDir)
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(logger.Error.String("Cannot read .ask.toml"))
+		fmt.Fprintln(os.Stderr, logger.Error.String("Cannot read .ask.toml"))
 		os.Exit(0)
 	}
 }
