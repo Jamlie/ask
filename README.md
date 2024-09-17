@@ -21,6 +21,16 @@ ask gemini --chat
 > what is 0x45 in decimals?
 ```
 
+- Multi-line statements in chat
+
+```
+ask gemini --chat
+> @"
+... what is 0x45 in decimals?
+... and what is it in octal?
+... @"
+```
+
 ## Get Started
 
 1. Install `ask`
