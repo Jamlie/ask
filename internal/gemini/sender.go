@@ -79,3 +79,19 @@ func (g *Gemini) Chat() func(context.Context, string) (*genai.GenerateContentRes
 		return res, nil
 	}
 }
+
+func (g *Gemini) Document(
+	ctx context.Context,
+	path, msg string,
+) (*genai.GenerateContentResponse, error) {
+	file, err := g.client.UploadFileFromPath(ctx, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer g.client.DeleteFile(ctx, file.Name)
+
+	return g.model.GenerateContent(ctx,
+		genai.FileData{URI: file.URI},
+		genai.Text(msg),
+	)
+}

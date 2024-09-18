@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Jamlie/ask/internal/color"
@@ -27,6 +28,8 @@ var geminiCmd = &cobra.Command{
 	Long:       "Asks Gemini a question and gives the answer",
 	SuggestFor: []string{"gemni", "gemin"},
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
+
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
@@ -46,6 +49,20 @@ var geminiCmd = &cobra.Command{
 			return
 		}
 
+		doc, _ := cmd.PersistentFlags().GetBool("doc")
+		msg, _ := cmd.PersistentFlags().GetString("msg")
+		path, _ := cmd.PersistentFlags().GetString("path")
+
+		if !doc && (len(msg) != 0 || len(path) != 0) {
+			fmt.Fprintln(os.Stderr, color.Error.String("cannot use msg and path without defining doc"))
+			return
+		}
+
+		if doc {
+			documentRenderer(ctx, geminiAI, msg, path)
+			return
+		}
+
 		if len(args) != 1 {
 			fmt.Fprintln(os.Stderr, color.Error.String("gemini only receives one argument"))
 			os.Exit(0)
@@ -60,6 +77,46 @@ func init() {
 
 	geminiCmd.PersistentFlags().BoolP("no-csv", "n", false, "Use to stop saving questions in a csv file")
 	geminiCmd.PersistentFlags().BoolP("chat", "c", false, "Used to start a chat with Gemini")
+	geminiCmd.PersistentFlags().BoolP("doc", "d", false, "Used to indicate that a document will be sent")
+	geminiCmd.PersistentFlags().StringP("msg", "m", "", "Used to send a message to after doc is defined Gemini")
+	geminiCmd.PersistentFlags().StringP("path", "p", "", "Used to send ")
+}
+
+func documentRenderer(ctx context.Context, geminiAI *gemini.Gemini, msg, path string) {
+	if path == "" {
+		fmt.Fprintln(os.Stderr, color.Error.String("doc's path cannot be empty"))
+		return
+	}
+
+	if msg == "" {
+		fmt.Fprintln(os.Stderr, color.Error.String("doc's msg cannot be empty"))
+		return
+	}
+
+	if !isValidPath(path) {
+		fmt.Fprintf(os.Stderr, color.Error.String("\"%s\" is not valid path\n"), path)
+		return
+	}
+
+	res, err := geminiAI.Document(ctx, path, msg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, color.Error.String(err.Error()))
+		return
+	}
+
+	answer := fmt.Sprint(res.Candidates[0].Content.Parts[0])
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(80),
+	)
+
+	mdAnswer, err := r.Render(answer)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, color.Error.String(err.Error()))
+		return
+	}
+	fmt.Print(string(mdAnswer))
 }
 
 func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, q string) {
@@ -234,4 +291,11 @@ func isNewFile(f *os.File) (bool, error) {
 	}
 
 	return fileInfo.Size() == 0, nil
+}
+
+func isValidPath(path string) bool {
+	cleanedPath := filepath.Clean(path)
+
+	_, err := os.Stat(cleanedPath)
+	return !os.IsNotExist(err)
 }

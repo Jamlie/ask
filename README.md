@@ -31,6 +31,12 @@ ask gemini --chat
 ... @"
 ```
 
+- Document:
+
+```
+ask gemini --doc --path "path/to/pdf" --msg "summarize this"
+```
+
 ## Get Started
 
 1. Install `ask`
