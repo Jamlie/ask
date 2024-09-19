@@ -208,7 +208,7 @@ func startChat(geminiAI *gemini.Gemini) {
 
 		input = strings.TrimSpace(input)
 
-		if len(input) == 0 {
+		if len(input) == 0 && !isMultiline {
 			fmt.Fprintln(os.Stderr, color.Warn.String("Entered an empty input"))
 			continue
 		}
@@ -230,6 +230,13 @@ func startChat(geminiAI *gemini.Gemini) {
 		}
 
 		fullInput := inputBuilder.String()
+		fullInput = strings.TrimSpace(fullInput)
+
+		if len(fullInput) == 0 {
+			fmt.Fprintln(os.Stderr, color.Warn.String("Entered an empty input"))
+			continue
+		}
+
 		inputBuilder.Reset()
 
 		res, err := chatBot(ctx, fullInput)
