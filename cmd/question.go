@@ -79,7 +79,7 @@ func init() {
 	geminiCmd.PersistentFlags().BoolP("chat", "c", false, "Used to start a chat with Gemini")
 	geminiCmd.PersistentFlags().BoolP("doc", "d", false, "Used to indicate that a document will be sent")
 	geminiCmd.PersistentFlags().StringP("msg", "m", "", "Used to send a message to after doc is defined Gemini")
-	geminiCmd.PersistentFlags().StringP("path", "p", "", "Used to send ")
+	geminiCmd.PersistentFlags().StringP("path", "p", "", "Used to specify path")
 }
 
 func documentRenderer(ctx context.Context, geminiAI *gemini.Gemini, msg, path string) {
