@@ -33,7 +33,7 @@ var geminiCmd = &cobra.Command{
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(0)
+			return
 		}
 
 		initViper(homeDir)
@@ -65,7 +65,7 @@ var geminiCmd = &cobra.Command{
 
 		if len(args) != 1 {
 			fmt.Fprintln(os.Stderr, color.Error.String("gemini only receives one argument"))
-			os.Exit(0)
+			return
 		}
 
 		askQuestion(cmd, geminiAI, args[0])
@@ -199,7 +199,7 @@ func startChat(geminiAI *gemini.Gemini) {
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, color.Error.String(err.Error()))
-			os.Exit(0)
+			return
 		}
 
 		if interrupted != 0 {
@@ -242,7 +242,7 @@ func startChat(geminiAI *gemini.Gemini) {
 		res, err := chatBot(ctx, fullInput)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, color.Error.String(err.Error()))
-			os.Exit(0)
+			return
 		}
 
 		answer := fmt.Sprint(res.Candidates[0].Content.Parts[0])
@@ -250,7 +250,7 @@ func startChat(geminiAI *gemini.Gemini) {
 		mdAnswer, err := r.Render(answer)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, color.Error.String(err.Error()))
-			os.Exit(0)
+			return
 		}
 		fmt.Print(string(mdAnswer))
 	}
@@ -262,7 +262,7 @@ func initViper(homeDir string) {
 	viper.AddConfigPath(homeDir)
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Fprintln(os.Stderr, color.Error.String("Cannot read .ask.toml"))
-		os.Exit(0)
+		return
 	}
 }
 
