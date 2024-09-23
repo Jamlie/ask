@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -75,7 +74,6 @@ var geminiCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(geminiCmd)
 
-	geminiCmd.PersistentFlags().BoolP("no-csv", "n", false, "Use to stop saving questions in a csv file")
 	geminiCmd.PersistentFlags().BoolP("chat", "c", false, "Used to start a chat with Gemini")
 	geminiCmd.PersistentFlags().BoolP("doc", "d", false, "Used to indicate that a document will be sent")
 	geminiCmd.PersistentFlags().StringP("msg", "m", "", "Used to send a message to after doc is defined Gemini")
@@ -132,13 +130,6 @@ func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, q string) {
 	}
 
 	answer := fmt.Sprint(res.Candidates[0].Content.Parts[0])
-
-	unsave, _ := cmd.PersistentFlags().GetBool("no-csv")
-	if !unsave {
-		if err := saveToCSV([]string{question, answer}); err != nil {
-			fmt.Fprintln(os.Stderr, color.Error.String("Unable to save record into CSV"))
-		}
-	}
 
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
@@ -264,31 +255,6 @@ func initViper(homeDir string) {
 		fmt.Fprintln(os.Stderr, color.Error.String("Cannot read .ask.toml"))
 		return
 	}
-}
-
-func saveToCSV(record []string) error {
-	csvFile, err := os.OpenFile("gemini.csv", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	defer csvFile.Close()
-
-	isNew, err := isNewFile(csvFile)
-	if err != nil {
-		return err
-	}
-
-	writer := csv.NewWriter(csvFile)
-	defer writer.Flush()
-
-	if isNew {
-		header := []string{"Question", "Answer"}
-		if err := writer.Write(header); err != nil {
-			return err
-		}
-	}
-
-	return writer.Write(record)
 }
 
 func isNewFile(f *os.File) (bool, error) {

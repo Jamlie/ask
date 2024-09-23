@@ -42,7 +42,7 @@ ask gemini --doc --path "path/to/pdf" --msg "summarize this"
 1. Install `ask`
 
 ```
-go install github.com/Jamlie/ask
+go install github.com/Jamlie/ask@latest
 ```
 
 2. Make a `.ask.toml` file in `$HOME` for Windows, macOS and Linux (I'd like to interject for a moment...) in this format:
