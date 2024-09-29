@@ -67,7 +67,7 @@ var geminiCmd = &cobra.Command{
 			return
 		}
 
-		askQuestion(cmd, geminiAI, args[0])
+		askQuestion(geminiAI, args[0])
 	},
 }
 
@@ -117,7 +117,7 @@ func documentRenderer(ctx context.Context, geminiAI *gemini.Gemini, msg, path st
 	fmt.Print(string(mdAnswer))
 }
 
-func askQuestion(cmd *cobra.Command, geminiAI *gemini.Gemini, q string) {
+func askQuestion(geminiAI *gemini.Gemini, q string) {
 	question := strings.TrimSpace(q)
 	if len(question) == 0 {
 		fmt.Fprintln(os.Stderr, color.Warn.String("Entered an empty input"))
